@@ -54,6 +54,22 @@ Photoshopは別途必要です。プラグインはインストーラーだけ�
 3. 画像が開いたら、通常のPhotoshop画像と同じように編集できます。
 4. PNGなどで保存するには、「ファイル → コピーを保存」から保存形式を選びます。書き出し機能も利用できます。
 
+## Photoshopで開けるPICTと開けないPICTがある理由
+
+Adobeの公式ヘルプでは、Photoshopは**ラスター（ピクセル画像）のPICTを開ける一方、QuickDraw PICTの読み込みとPICT形式への保存には対応しない**と案内されています。「PhotoshopはPICT対応」と書かれていても、すべてのPICTを開けるという意味ではありません。[Adobe：サポートされている画像ファイル形式](https://helpx.adobe.com/jp/photoshop/desktop/save-and-export/export-files-to-different-formats/image-file-formats-supported-in-photoshop.html)
+
+PICTには、画像データだけでなく「線を引く」「文字を描く」「画像を貼り付ける」といったQuickDrawの描画命令も記録できます。同じ`.pict`や`.pct`でも、作成したアプリや保存方法によって中身が異なるのが、互換性をややこしくする理由です。[Apple『Inside Macintosh』の描画命令仕様（保存版）](https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-461.html)
+
+| よくある疑問 | 読み込めるかを判断する手がかり |
+| --- | --- |
+| あるPICTは開くのに、別のPICTは開かない | 写真のような画像データが中心か、図形・文字の描画命令を含むかなど、ファイルの中身に違いがあります。 |
+| PICT 1なら図形、PICT 2なら写真？ | 1／2は形式のバージョンです。どちらにも描画命令があるため、この番号だけで読み込めるとは判断できません。 |
+| 「Macintosh PICT」を指定すれば必ず開く？ | 形式の指定は自動判別を補う操作です。Adobeも、実際の形式が違う場合や破損したファイルは開けないと案内しています。 |
+
+バージョンと描画命令の関係は[AppleのPICTヘッダー仕様（保存版）](https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-459.html)、形式を指定する操作は[Adobeのファイル読み込み手順](https://helpx.adobe.com/photoshop/desktop/create-open-import-images/import-files/open-and-import-files-in-photoshop.html)を参照できます。
+
+PICT Importは、画像データに加えて基本的な図形や文字の描画命令も処理します。標準の読み込みで開けないPICTを試すためのプラグインですが、対応範囲は次のとおりです。
+
 ## 読み込める画像と制限
 
 PICT 1・PICT 2に対応し、白黒・パレットカラー・RGBの画像、基本的な図形や文字を読み込めます。ただし、PICTの内容によっては読み込めないものや、当時と見た目が異なるものがあります。
