@@ -1,124 +1,120 @@
-# PICT Import — Photoshop用ネイティブプラグイン
+# PICT Import
 
-Macintosh PICTをPhotoshopの「ファイル → 開く」から読み込む、macOS用の読み込み専用プラグインです。画像を8ビットRGBに描画し、Photoshopで編集・PNG保存できるようにします。
+古いMacで作成したPICT画像を、Photoshopで開くためのmacOS用プラグインです。`.pict`・`.pct`・`.pic`ファイルを読み込み、Photoshopで編集したり、PNG・JPEG・PSDなどで保存したりできます。
 
-公開リポジトリ：[ayumuwall/PICT-Import](https://github.com/ayumuwall/PICT-Import) · ライセンス：[MIT](LICENSE)
+**[PICT Import 0.1.2のインストーラーをダウンロード（macOS）](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.2/PICT-Import-0.1.2-Installer.pkg)**
 
-## ダウンロード
+[手動インストール用ZIP](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.2/PICT-Import-0.1.2-macOS.zip) · [リリース一覧](https://github.com/ayumuwall/PICT-Import/releases)
 
-配布済みのバイナリーは[GitHub Releases](https://github.com/ayumuwall/PICT-Import/releases)で確認できます。配布されていない版は、以下の開発手順でインストーラー（`.pkg`）と手動導入用ZIPを作成してください。現在の0.1.2は開発版です。対応環境・制限・検証状況を確認してから利用してください。
+**現在の公開版は0.1.2（開発版）です。Photoshop本体でのPICT読み込みを確認済みです。**
 
-## 成果物と検証状況
+## 必要な環境
 
-- `dist/PICT Import.plugin`：Intel／Apple SiliconのUniversalバンドル。
-- `dist/PICT-Import-0.1.2-Installer.pkg`：ダブルクリックで実行するmacOS標準インストーラー。
-- `dist/PICT-Import-0.1.2-macOS.zip`：プラグインと導入・仕様説明をまとめた配布用ファイル。
-- [PICTの仕様調査](docs/PICT-SPEC.md)：構造、圧縮方式、実装範囲、出典。
-- 対象：macOS 12以降、Photoshop 2025／26.0以降。Adobe公式SDKのPiPLs.json方式を利用。
-- デコーダーの単体テスト、AddressSanitizer／UndefinedBehaviorSanitizer、実際のMach-Oバンドルをロードするホスト接続テストが通過。
-- 手元の4つのPICTファイル（640×480）は、FFmpegのQuickDrawデコーダーが出力したRGBAと全画素一致。元ファイルは変更せず、配布物にも含めていません。
-- インストーラーは展開して、配置先・権限・更新設定・同梱プラグインとの一致・署名を検証します。
-- 0.1.1ではホスト指定を修正し、Photoshopへの登録を確認しました。0.1.2では、準備段階の未設定記述子を参照せず、SDKのファイルURLからプラグイン自身が読み取り専用で開くよう変更しています。
-- 指定されたIMAGE029.pctを新しいファイルURL方式で読み、模擬ホストへ渡した480行のRGBAがFFmpegの結果と一致することを検証しました。
-- **0.1.2のPhotoshop本体での読み込みは未確認です。** Apple Silicon上の実行も未確認です。
+| 項目 | 必要なもの |
+| --- | --- |
+| OS | macOS 12以降（使用するPhotoshopの動作要件も満たすこと） |
+| Photoshop | Photoshop 2025（バージョン26.0）以降 |
+| Mac | Intel Mac／Apple Silicon Mac |
+| インストール時 | Macの管理者認証 |
 
-## インストールと利用
+Photoshopは別途必要です。プラグインはインストーラーだけで導入できます。
+
+## インストール
 
 1. Photoshopで作業中のファイルを保存し、Photoshopを終了します。
-2. `PICT-Import-0.1.2-Installer.pkg`をダブルクリックし、案内に従ってインストールします。管理者の認証が必要です。旧版が入っている場合も同じ手順で更新します。
-3. Photoshopを起動します。Mac全体の再起動は不要です。
-4. 「Photoshop → プラグインについて」に「Macintosh PICT」が表示されることを確認します。
-5. 「ファイル → 開く」で`.pict`・`.pct`・`.pic`を選びます。必要なら形式を「Macintosh PICT」に指定します。
-6. PNGが必要な場合は、開いた画像をPhotoshopの「コピーを保存」または書き出し機能でPNGに保存します。
+2. 上のリンクからダウンロードした`PICT-Import-0.1.2-Installer.pkg`を開きます。
+3. インストーラーの案内に従います。管理者認証を求められたら、Macの管理者アカウントで許可してください。
+4. Photoshopを起動します。Mac全体の再起動は不要です。
 
-配置先は[Adobeが案内する共有フォルダー](https://helpx.adobe.com/photoshop/desktop/troubleshoot/tool-feature-issues/photoshop-plug-in-folder-locations.html)です。対応するPhotoshopのバージョンとMac上のすべてのユーザーで利用できます。この場所の既存プラグインは、識別子を確認して更新します。配置先の自動移動は無効にし、既に新しいバージョンがある場合はダウングレードしない設定です。
+インストーラーは未署名・未公証のため、macOSの警告で止まる場合があります。その場合は[「インストーラーが開けない」](#インストーラーが開けない)を参照してください。
+
+<details>
+<summary>ZIPを使って手動でインストールする場合</summary>
+
+1. Photoshopを終了し、[手動インストール用ZIP](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.2/PICT-Import-0.1.2-macOS.zip)をダウンロード・展開します。
+2. Finderの「移動 → フォルダへ移動」で、`/Library/Application Support/`を開きます。
+3. その中の`Adobe` → `Plug-Ins` → `CC`フォルダーを開きます。フォルダーがない場合は、この順に作成してください。
+4. 展開した`PICT-Import`フォルダー内の`PICT Import.plugin`を、`CC`フォルダーへコピーします。管理者認証を求められる場合があります。
+5. Photoshopを起動します。
+
+インストーラーも、手動インストールも、最終的な配置先は同じです。
 
 ```text
 /Library/Application Support/Adobe/Plug-Ins/CC/PICT Import.plugin
 ```
 
-インストーラーは、標準機能でPhotoshopの終了を確認してからファイルを配置します。追加のインストールスクリプトは含まず、Photoshopの環境設定も変更しません。Photoshop未導入のMacにも配置できるため、利用時には対応するPhotoshopを用意してください。
+この[共有プラグインフォルダー](https://helpx.adobe.com/photoshop/desktop/troubleshoot/tool-feature-issues/photoshop-plug-in-folder-locations.html)に置くと、Mac上の各ユーザーと、対応するPhotoshopの各バージョンで利用できます。
 
-ZIPで手動導入する場合も同じ共有フォルダーへ配置できます。バージョン別の`/Applications/Adobe Photoshop 2026/Plug-ins/`に手動配置したコピーがある場合は、二重配置にならないよう先に取り除いてください。
+</details>
 
-削除する場合は、Photoshop終了後に共有フォルダーの`PICT Import.plugin`を取り除いてください。
+## PICTを開く・別の形式で保存する
 
-プラグインにはローカル開発用のアドホック署名を付けています。PKGは未署名で、Developer ID署名・公証済みの一般配布版ではありません。macOSが実行を拒否する場合は、セキュリティ設定を一括で無効化せず、必要な署名・公証を行ってください。
+1. Photoshopの「ファイル → 開く」を選びます。
+2. PICTファイル（`.pict`・`.pct`・`.pic`）を選んで開きます。形式の指定が必要な場合は「Macintosh PICT」を選んでください。
+3. 画像が開いたら、通常のPhotoshop画像と同じように編集できます。
+4. PNGなどで保存するには、「ファイル → コピーを保存」から保存形式を選びます。書き出し機能も利用できます。
 
-## 対応するPICT
+PICTの読み込み結果は、**8ビットRGBの1枚の画像**になります。開くだけで元のPICTファイルが書き換わることはありません。
 
-| 項目 | 対応範囲 |
-| --- | --- |
-| 形式 | PICT 1、PICT 2、拡張PICT 2 |
-| コンテナー | 512バイトのファイルヘッダーあり、ヘッダーなしの生PICTデータ |
-| ビットマップ | 1ビット白黒、1／2／4／8ビットのパレット、16ビットRGB555、32ビットRGB |
-| 圧縮 | 非圧縮、PackBits、16ビット単位RLE、RGB成分ごとのRLE、32ビットのパッド除去 |
-| 転送 | BitsRect／BitsRgn、PackBitsRect／PackBitsRgn、DirectBitsRect／DirectBitsRgn |
-| 図形 | 線、矩形、角丸矩形、楕円、円弧、ポリゴン、領域の塗りつぶし、same系 |
-| クリップ | 矩形・走査線形式のリージョン |
-| その他 | 8×8の白黒パターン、RGB色指定、基本論理転送モード、反転、拡張ヘッダーの解像度 |
-| 文字 | MacRoman、太字・斜体、フォント名指定とシステムフォントへの代替 |
+## 読み込める画像と制限
 
-## 制限
+PICT 1・PICT 2に対応し、白黒・パレットカラー・RGBの画像、基本的な図形や文字を読み込めます。ただし、PICTの内容によっては読み込めないものや、当時と見た目が異なるものがあります。
 
-- QuickTime埋め込み画像（JPEGを含む）、PostScript描画コメント、PixPat、算術転送モード、原点の移動、複雑なリージョンの輪郭描画、一部の文字装飾・文字間隔・文字変形は未対応で、エラーとして扱います。
-- リソースフォーク全体、AppleDouble、MacBinary、StuffItは展開しません。**リソースから取り出したPICTそのもの**は読み込めます。
-- ベクターと文字は1枚のRGB画像になります。文字は現行のCoreTextフォントで描くため、当時のQuickDrawと字形・字幅が異なる場合があります。日本語などMacRoman以外の文字コードは対象外です。
-- 色付きソースに対する論理転送やペンの輪郭は、当時のOS・表示デバイスと完全に同じ結果になる保証はありません。ICCプロファイルの復元、レイヤー復元、透明度の復元、PICT書き出しは行いません。背景は白です。
-- 上限は256 MiB／ファイル、32×1024×1024画素、各辺32767画素です。描画命令数・展開量・リージョンの複雑さにも上限を設けています。
+- **図形や文字も画像になります。** ベクターや文字としての再編集、元のレイヤー・透明度・ICCプロファイルの復元はできません。背景は白になります。
+- **文字の再現には制限があります。** MacRomanの欧文文字が対象です。日本語などは正しく再現できず、欧文も現在のフォントで描くため字形や字幅が変わる場合があります。
+- **QuickTime形式でJPEGなどを埋め込んだPICTや、一部の特殊な描画には未対応です。** 未対応機能を含むファイルは、読み込みエラーになります。
+- **MacBinary・AppleDouble・StuffItや、リソースフォーク全体は直接読み込めません。** これらに格納された画像は、先にPICTデータを取り出す必要があります。
 
-## 開発
+圧縮方式・描画機能・画像サイズの上限など、詳しい対応範囲は[PICTの仕様と対応範囲](docs/PICT-SPEC.md)を参照してください。
 
-必要なものはXcode Command Line ToolsまたはXcodeと、Python 3.9以降です。HomebrewライブラリやJavaは不要です。
+## 困ったとき
 
-```sh
-git clone https://github.com/ayumuwall/PICT-Import.git
-cd PICT-Import
-python3 scripts/fetch_sdk.py
-make test
-make plugin
-make test-installer
-python3 scripts/package.py
-```
+### インストーラーが開けない
 
-SDK取得時だけネット接続が必要です。Adobe公式リポジトリのコミットを固定し、各ファイルのGit blobハッシュを確認して`.vendor/photoshop-sdk`に保存します。別のSDKを使う場合は`make SDK=/path/to/photoshop-sdk plugin`と指定できます。SDK本体は配布物に含めません。利用条件は[Adobe SDKライセンス](https://github.com/AdobeDocs/photoshop-cpp-sdk/blob/7e9aca4353a3d4615e9522f47521bf840fb4388c/LICENSE.md)を参照してください。
+「開発元を確認できない」「Appleで悪質なソフトウェアかどうかを確認できない」と表示される場合があります。本リポジトリのリリースから入手したファイルであることを確認し、インストールする場合は次の手順で、このインストーラーの実行を許可します。
 
-テストは合成したPICTを`build/fixtures`に生成します。外部のPICTを検証する場合は次の環境変数を指定できます。
+1. 一度インストーラーを開き、警告が出たら閉じます。
+2. Macの「システム設定 → プライバシーとセキュリティ」を開きます。macOS 12では「システム環境設定 → セキュリティとプライバシー → 一般」です。
+3. 対象のインストーラーに対して「このまま開く」を選び、確認画面の案内に従います。
 
-```sh
-PICT_TEST_SAMPLE_DIR=/path/to/samples make test
-```
+詳しくは[Appleの案内](https://support.apple.com/ja-jp/102445)を参照してください。会社・学校などで管理されているMacで許可できない場合は、管理者へ相談してください。
 
-参照デコーダーの結果を比較するときは、ファイル名の拡張子を`.rgba`に変えた8ビットRGBAデータを用意し、`PICT_TEST_REFERENCE_DIR`も指定します。
+### PhotoshopでPICTを選べない・プラグインが見つからない
 
-0.1.2以降は、Photoshopからの呼び出し番号・返却値・エラー内容をmacOSの統合ログへ記録します。ファイルの画像データはログに含めません。読み込み後に次のコマンドで該当プラグインの診断を確認できます。
+次の順に確認してください。
 
-```sh
-/usr/bin/log show --last 10m --style compact --predicate 'subsystem == "jp.pictimport.photoshop"'
-```
+1. インストール後、Photoshopを終了して起動し直したか。
+2. Photoshopが2025（26.0）以降か。
+3. 「Photoshop → プラグインについて」に「Macintosh PICT」が表示されるか。
+4. `/Library/Application Support/Adobe/Plug-Ins/CC/`に`PICT Import.plugin`があるか。
 
-## 構成
+以前、Photoshopのバージョン別`Plug-ins`フォルダーに手動で入れた場合は、同じプラグインが二重に配置されていないかも確認してください。
+
+### 特定のPICTだけ開けない・表示が元と違う
+
+[読み込める画像と制限](#読み込める画像と制限)を確認してください。未対応の埋め込み画像や描画機能、文字・フォントの違いなどが原因になることがあります。
+
+解決しない場合は、[GitHub Issues](https://github.com/ayumuwall/PICT-Import/issues)へ、macOS・Photoshop・PICT Importのバージョン、Macの種類（Intel／Apple Silicon）、表示されたエラーを添えて報告してください。元のPICTを作成したアプリ名や、共有可能なサンプルがあると調査に役立ちます。
+
+## 更新・アンインストール
+
+**更新：** Photoshopを終了し、新しいバージョンのインストーラーを実行してください。同じ場所にある旧版を更新します。
+
+**アンインストール：** Photoshopを終了し、Finderの「移動 → フォルダへ移動」で次のフォルダーを開き、`PICT Import.plugin`をゴミ箱へ移動します。管理者認証を求められる場合があります。
 
 ```text
-src/pict.cpp             PICTの解析、PackBits展開、描画
-src/plugin.cpp           PhotoshopのFormatRecord／POSIX I/O接続
-resources/PiPLs.json     形式登録、拡張子、読み込み専用の宣言
-resources/Info.plist     macOSバンドル情報
-tests/pict_tests.cpp     デコーダーと変異入力のテスト
-tests/plugin_tests.cpp   生成したバンドルをロードするホスト接続テスト
-scripts/sdk.lock.json    Adobe SDKの固定版とハッシュ
-scripts/build_installer.py   macOSインストーラーの作成
-scripts/verify_installer.py  システムへ導入しないパッケージ検証
-scripts/verify_plugin_metadata.py  PiPLの必須項目と依存条件の検査
-resources/installer/     インストーラーの日本語画面・配置設定
-docs/PICT-SPEC.md        仕様調査と実装方針
-LICENSE                 MITライセンス
+/Library/Application Support/Adobe/Plug-Ins/CC/
 ```
+
+その後、Photoshopを起動し直してください。
+
+## 開発・技術資料
+
+- [ソースからのビルド・テスト・診断ログ](https://github.com/ayumuwall/PICT-Import/blob/main/docs/DEVELOPMENT.md)
+- [PICTの仕様と対応範囲](docs/PICT-SPEC.md)
 
 ## ライセンス
 
-本プロジェクトのソースコードと文書は[MITライセンス](LICENSE)で公開しています。ライセンス文はプラグインバンドル・インストーラー・配布用ZIPにも同梱します。
-
-ビルド時に利用するAdobe Photoshop C++ SDKはAdobe独自のライセンスが適用され、本プロジェクトのMITライセンスには含まれません。SDK本体・ヘッダーや検証に使用した個人の画像は、公開リポジトリと配布物に含めません。
+[MITライセンス](LICENSE)で公開しています。
 
 AdobeおよびPhotoshopはAdobeの商標です。本プロジェクトはAdobe公式製品ではありません。
