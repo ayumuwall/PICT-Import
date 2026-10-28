@@ -8,6 +8,7 @@
 2. Apple『Inside Macintosh: Imaging With QuickDraw』[CopyBits](https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-166.html)。転送モードと色の扱いの参照資料です。
 3. Adobe公式[Photoshop C++ SDK](https://github.com/AdobeDocs/photoshop-cpp-sdk)。使用版は`7e9aca4353a3d4615e9522f47521bf840fb4388c`。`PIFormat.h`、`PITypes.h`、`simpleformat`の登録定義、`pipl-schema.json`でネイティブ形式プラグインの契約を確認しました。
 4. Adobeの[Photoshop拡張方式の説明](https://developer.adobe.com/photoshop/)。追加の画像形式にはC++ SDKを利用できます。
+5. Apple『Inside Macintosh: QuickTime』Image Compression ManagerのTable 3-1「Fields of the PICT opcode for compressed QuickTime images」（[保存版](https://vintageapple.org/inside_r/pdf/QuickTime_1993.pdf)）。`0x8200`の可変長レコードとImageDescriptionを参照しました。変換行列の固定小数点形式はAppleの[行列仕様](https://developer.apple.com/documentation/quicktime-file-format/matrices)も参照できます。
 
 ## PICTは描画命令の記録
 
@@ -53,6 +54,16 @@ PackBitsの制御バイトは符号付きです。`0..127`は後続の`n+1`単�
 
 PixMapの`packType`については、非圧縮、32ビット画素のパッド除去、16ビット単位の圧縮、RGB成分を分けた圧縮を扱います。パッドを透明度とは解釈せず、RGB画像として出力します。
 
+### QuickTime埋め込みJPEG（0.1.3以降）
+
+`0x8200`（CompressedQuickTime）のバージョン0で、`ImageDescription.cType`が`jpeg`の単一フレーム画像をImageIOで展開します。RGBの24／32ビット記述と8ビットグレースケール記述（depth 40）を対象とし、色テーブル・外部データ参照は受け付けません。ソース矩形で切り抜き、正の拡大率と平行移動を適用して、既存のクリップ領域・転送モードで合成します。複数の命令による分割画像も順に配置します。
+
+命令長・ImageDescription長・JPEG長・開始／終端マーカーを検査し、ImageIOでデコードする前にJPEG自身の寸法と記述の一致を確認します。`dataSize`が0の場合は命令内の残りをJPEGとみなし、末尾の1バイトの位置合わせを許容します。埋め込み画像にも既存の画素数・処理量・キャンセル制限を適用します。
+
+JPEG命令の直後に、同じ転送先矩形の白黒`PackBitsRect`がある場合はQuickTime未搭載環境向けの代替表示として描画を抑制します。データ自体は通常どおり読み取り・検査します。別の矩形やカラー画像、他の命令を挟んだ後の画像は通常どおり描画します。
+
+回転・せん断・射影・反転、マット・マスク、JPEG以外のコーデック、`0x8201`（UncompressedQuickTime）は未対応として拒否します。
+
 ## 描画と安全性
 
 図形はCoreGraphicsで被覆マスクを生成し、色・8×8パターン・基本の論理転送を適用します。複雑なリージョンは走査線の境界差分を復元してクリップに使います。文字はMacRomanからCoreTextへ渡します。現行フォントによる描画なので、QuickDrawのビットマップフォントを厳密に再現するものではありません。
@@ -67,13 +78,14 @@ PixMapの`packType`については、非圧縮、32ビット画素のパッド�
 | コンテナー | 512バイトのファイルヘッダーあり、ヘッダーなしの生PICTデータ |
 | ビットマップ | 1ビット白黒、1／2／4／8ビットのパレット、16ビットRGB555、32ビットRGB |
 | 圧縮 | 非圧縮、PackBits、16ビット単位RLE、RGB成分ごとのRLE、32ビットのパッド除去 |
+| QuickTime | 埋め込みJPEG、分割画像、平行移動、正の拡大縮小、ソース矩形による切り抜き（0.1.3以降） |
 | 転送 | BitsRect／BitsRgn、PackBitsRect／PackBitsRgn、DirectBitsRect／DirectBitsRgn |
 | 図形 | 線、矩形、角丸矩形、楕円、円弧、ポリゴン、領域の塗りつぶし、same系 |
 | クリップ | 矩形・走査線形式のリージョン |
 | その他 | 8×8の白黒パターン、RGB色指定、基本論理転送モード、反転、拡張ヘッダーの解像度 |
 | 文字 | MacRoman、太字・斜体、フォント名指定とシステムフォントへの代替 |
 
-QuickTime埋め込み画像（JPEGを含む）、PostScript描画コメント、PixPat、算術転送モード、原点の移動、複雑なリージョンの輪郭描画、一部の文字装飾・文字間隔・文字変形は未対応で、エラーとして扱います。色付きソースに対する論理転送やペンの輪郭は、当時のOS・表示デバイスと完全に同じ結果になる保証はありません。
+JPEG以外のQuickTime埋め込み画像と上記の未対応変換、PostScript描画コメント、PixPat、算術転送モード、原点の移動、複雑なリージョンの輪郭描画、一部の文字装飾・文字間隔・文字変形は未対応で、エラーとして扱います。色付きソースに対する論理転送やペンの輪郭は、当時のOS・表示デバイスと完全に同じ結果になる保証はありません。
 
 上限は256 MiB／ファイル、32×1024×1024画素、各辺32767画素です。描画命令数・展開量・リージョンの複雑さにも上限を設けています。
 
@@ -92,5 +104,7 @@ macOSの`8BIF`形式バンドルに`PluginMain`を公開し、`PiPLs.json`でPIC
 合成データでPICT 1／2、ヘッダー、負の座標、解像度、主要なピクセル形式、圧縮、クリップ、図形、文字、破損・切断・変異入力を検証しました。実ファイル4点のラスターデコードは独立したFFmpegの結果と全画素を照合しました。
 
 さらに生成したUniversalバンドルを`dlopen`し、SDKの構造体を使った模擬ホストで識別・画像受け渡し・チャンク・進捗・キャンセル・エラー処理を検証しました。0.1.2では準備段階に記述子がない場合、日本語パスのファイルURL、16ビット座標、実際のIMAGE029.pctの全行転送も検証しています。
+
+0.1.3では、QuickTime JPEGの分割・移動・拡大縮小・切り抜き・クリップ・代替表示と、未対応形式・不正な長さ・寸法不一致・切断・画素数制限・キャンセルを合成データで検証しました。実ファイルIMAGE005.pctも、JPEGの3帯を独立に展開・連結した640×480の参照RGBAと、デコーダー出力・模擬ホストへの480行の転送結果が全画素一致しました。利用者によるPhotoshop本体での読み込みも確認済みです。
 
 Photoshop 27.11.0上で0.1.1の形式登録を確認した後、同版でIMAGE029.pctの読み込み失敗を再現しました。0.1.2への修正後、利用者からPhotoshop本体でPICTを読み込めたことが確認されています。

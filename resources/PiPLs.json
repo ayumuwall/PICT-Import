@@ -7,7 +7,7 @@
     "SubVersion": 0,
     "ComponentVersionShortNum": 0,
     "ComponentVersionMinorRevNum": 1,
-    "ComponentVersionDotRevNum": 2,
+    "ComponentVersionDotRevNum": 3,
     "ComponentName": "PICT Import",
     "CodeMacARM64": "PluginMain",
     "CodeMacIntel64": "PluginMain",

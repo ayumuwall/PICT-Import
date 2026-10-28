@@ -1,4 +1,6 @@
 #include "pict.hpp"
+#include <CoreGraphics/CoreGraphics.h>
+#include <ImageIO/ImageIO.h>
 
 #include <algorithm>
 #include <array>
@@ -87,6 +89,155 @@ void save(const Bytes& b, const std::string& name) {
     std::filesystem::create_directories("build/fixtures");
     std::ofstream f("build/fixtures/" + name, std::ios::binary);
     f.write(reinterpret_cast<const char*>(b.data()), b.size());
+}
+
+Bytes jpeg(int red, int green, int blue, bool split = false) {
+    Bytes rgba(16 * 16 * 4, 255);
+    for (int y = 0; y < 16; ++y)
+        for (int x = 0; x < 16; ++x) {
+            const auto i = (y * 16 + x) * 4;
+            rgba[i] = split && y >= 8 ? 0 : red;
+            rgba[i + 1] = split && y >= 8 ? 0 : green;
+            rgba[i + 2] = split && y >= 8 ? 255 : blue;
+        }
+    auto space = CGColorSpaceCreateDeviceRGB();
+    auto context = CGBitmapContextCreate(rgba.data(), 16, 16, 8, 64, space,
+        kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    CGColorSpaceRelease(space);
+    check(context, "テストJPEGの描画メモリを確保できません。");
+    auto image = CGBitmapContextCreateImage(context);
+    CGContextRelease(context);
+    check(image, "テストJPEGの元画像を作成できません。");
+    auto data = CFDataCreateMutable(nullptr, 0);
+    check(data, "テストJPEGの出力メモリを確保できません。");
+    auto destination = CGImageDestinationCreateWithData(data, CFSTR("public.jpeg"), 1, nullptr);
+    check(destination, "テストJPEGのエンコーダーを作成できません。");
+    CGImageDestinationAddImage(destination, image, nullptr);
+    check(CGImageDestinationFinalize(destination), "テストJPEGを作成できません。");
+    Bytes result(CFDataGetBytePtr(data), CFDataGetBytePtr(data) + CFDataGetLength(data));
+    CFRelease(destination); CFRelease(data); CGImageRelease(image);
+    return result;
+}
+
+// 戻り値はQuickTime命令のペイロード先頭。破損データ検査にも使う。
+std::size_t quickTime(Picture& p, const Bytes& image, int x = 0, int y = 0,
+                      int scale = 65536, bool unknownSize = false) {
+    Bytes q;
+    word(q, 0);
+    for (int value : {scale, 0, 0, 0, scale, 0, x * 65536, y * 65536, 0x40000000}) longword(q, value);
+    longword(q, 0); rect(q, 0, 0, 0, 0); word(q, 64);
+    rect(q, 0, 0, 16, 16); longword(q, 768); longword(q, 0);
+    longword(q, 86); longword(q, 0x6a706567);
+    longword(q, 0); word(q, 0); word(q, 0);
+    word(q, 1); word(q, 1); longword(q, 0x6170706c);
+    longword(q, 0); longword(q, 1023); word(q, 16); word(q, 16);
+    longword(q, 72 << 16); longword(q, 72 << 16);
+    longword(q, unknownSize ? 0 : image.size()); word(q, 1);
+    q.resize(q.size() + 32, 0); word(q, 24); word(q, -1);
+    q.insert(q.end(), image.begin(), image.end());
+    if (q.size() & 1) q.push_back(0);
+    p.op(0x8200); longword(p.bytes, q.size());
+    const auto start = p.bytes.size();
+    p.bytes.insert(p.bytes.end(), q.begin(), q.end());
+    return start;
+}
+
+void placeholder(Picture& p, int x, int y, int size = 16) {
+    p.op(0x98); word(p.bytes, 2); rect(p.bytes, 0, 0, 16, 16);
+    rect(p.bytes, 0, 0, 16, 16); rect(p.bytes, y, x, y + size, x + size); word(p.bytes, 0);
+    p.bytes.insert(p.bytes.end(), 32, 0xff);
+}
+
+void nearPixel(const pict::Image& image, int x, int y, std::array<int, 3> color) {
+    const auto i = (std::size_t(y) * image.width + x) * 4;
+    for (int c = 0; c < 3; ++c)
+        check(std::abs(int(image.rgba[i + c]) - color[c]) <= 20,
+            "JPEGの画素（" + std::to_string(x) + "," + std::to_string(y) + "）の成分" +
+            std::to_string(c) + ": " + std::to_string(image.rgba[i + c]) + " != " + std::to_string(color[c]));
+}
+
+void testQuickTime() {
+    const auto red = jpeg(255, 0, 0), blue = jpeg(0, 0, 255);
+    Picture p(16, 40);
+    quickTime(p, red); placeholder(p, 0, 0);
+    quickTime(p, blue, 0, 16, 65536, true); placeholder(p, 0, 16);
+    p.rgb(0, 255, 0); p.op(0x31); rect(p.bytes, 32, 0, 40, 16);
+    const auto bytes = p.finish(true); save(bytes, "quicktime-jpeg.pict");
+    const auto image = decode(bytes);
+    nearPixel(image, 4, 4, {255, 0, 0}); nearPixel(image, 4, 20, {0, 0, 255});
+    pixel(image, 4, 36, {0, 255, 0});
+    Picture scaled(40, 40);
+    scaled.op(1); word(scaled.bytes, 10); rect(scaled.bytes, 4, 4, 30, 30);
+    quickTime(scaled, jpeg(255, 0, 0, true), 2, 2, 2 * 65536);
+    const auto resized = decode(scaled.finish());
+    nearPixel(resized, 6, 6, {255, 0, 0}); nearPixel(resized, 6, 27, {0, 0, 255});
+    pixel(resized, 2, 2, {255, 255, 255}); pixel(resized, 31, 20, {255, 255, 255});
+    Picture cropped(16, 16);
+    const auto crop = quickTime(cropped, jpeg(255, 0, 0, true), -4, -4);
+    cropped.bytes[crop + 57] = 8; // ソース矩形の下端を8へ変更する。
+    const auto partial = decode(cropped.finish());
+    nearPixel(partial, 2, 2, {255, 0, 0}); pixel(partial, 2, 5, {255, 255, 255});
+    Picture reduced(16, 16);
+    quickTime(reduced, red, 2, 2, 32768);
+    const auto shrunk = decode(reduced.finish());
+    nearPixel(shrunk, 2, 2, {255, 0, 0}); nearPixel(shrunk, 9, 9, {255, 0, 0});
+    pixel(shrunk, 10, 9, {255, 255, 255});
+    Picture normal(32, 16);
+    quickTime(normal, red); placeholder(normal, 16, 0);
+    const auto following = decode(normal.finish());
+    nearPixel(following, 4, 4, {255, 0, 0}); pixel(following, 20, 4, {0, 0, 0});
+    Picture intervening(16, 16);
+    quickTime(intervening, red); intervening.rgb(0, 0, 0); placeholder(intervening, 0, 0);
+    pixel(decode(intervening.finish()), 4, 4, {0, 0, 0});
+}
+
+void testQuickTimeFailures() {
+    Picture p(16, 16);
+    const auto start = quickTime(p, jpeg(255, 0, 0));
+    const auto original = p.finish();
+    const auto corruptWord = [&](std::size_t offset, int value, const char* message) {
+        auto bytes = original;
+        bytes[start + offset] = (unsigned(value) >> 8) & 255;
+        bytes[start + offset + 1] = unsigned(value) & 255;
+        rejects(bytes, message);
+    };
+    corruptWord(0, 1, "バージョン");
+    corruptWord(6, 1, "回転");
+    corruptWord(38, 1, "マット");
+    corruptWord(64, 1, "マスク");
+    corruptWord(50, 32, "転送モード");
+    corruptWord(58, 17, "ソース矩形");
+    corruptWord(72, 0, "JPEGのみ");
+    corruptWord(82, 1, "外部データ");
+    corruptWord(100, 17, "寸法");
+    corruptWord(116, 2, "複数フレーム");
+    corruptWord(150, 8, "ピクセル形式");
+    auto tooShort = original; tooShort[start + 71] = 85; rejects(tooShort, "ImageDescription");
+    auto tooLong = original; tooLong[start + 68] = 0x7f; rejects(tooLong, "途中");
+    auto badDataSize = original; badDataSize[start + 112] = 0xff; rejects(badDataSize, "途中");
+    auto badJpeg = original; badJpeg[start + 154] = 0; rejects(badJpeg, "終端");
+    auto missingEnd = original;
+    for (std::size_t i = start + 154; i + 1 < missingEnd.size(); ++i)
+        if (missingEnd[i] == 0xff && missingEnd[i + 1] == 0xd9) missingEnd[i + 1] = 0;
+    rejects(missingEnd, "終端");
+    Picture corruptJpeg(16, 16);
+    quickTime(corruptJpeg, {0xff, 0xd8, 0, 0, 0, 0, 0xff, 0xd9});
+    rejects(corruptJpeg.finish());
+    for (std::size_t i = start; i < original.size(); ++i)
+        rejects(Bytes(original.begin(), original.begin() + i));
+    int cancellationChecks = 0;
+    try {
+        pict::decode(original.data(), original.size(), {}, [&] { return ++cancellationChecks >= 5; });
+        throw std::runtime_error("QuickTimeのキャンセルが効いていません。");
+    } catch (const pict::Error& e) {
+        check(std::string(e.what()).find("キャンセル") != std::string::npos,
+              "QuickTimeのキャンセル以外のエラーが発生しました。");
+    }
+    Picture small(1, 1); quickTime(small, jpeg(255, 0, 0)); const auto smallBytes = small.finish();
+    try {
+        pict::decode(smallBytes.data(), smallBytes.size(), {16, 1024 * 1024, 1024});
+        throw std::runtime_error("QuickTime画像の画素数制限が効いていません。");
+    } catch (const pict::Error&) {}
 }
 
 void testVector() {
@@ -255,7 +406,7 @@ void testReservedAndAlignment() {
     pixel(decode(p.finish()), 3, 1, {0, 0, 0});
 }
 void testFailures() {
-    Picture qt(4, 2); qt.op(0x8200); longword(qt.bytes, 0); rejects(qt.finish(), "QuickTime");
+    Picture qt(4, 2); qt.op(0x8201); longword(qt.bytes, 0); rejects(qt.finish(), "QuickTime");
     Picture unsupported(4, 2); unsupported.op(0x12); rejects(unsupported.finish(), "未対応");
     Picture text(4, 2); text.op(6); longword(text.bytes, 1); rejects(text.finish(), "未対応");
     Picture size(4, 2); auto bytes = size.finish();
@@ -328,6 +479,8 @@ int main() {
         {"パターン・反転・XOR", testPatternsAndModes},
         {"楕円・ポリゴン・文字", testShapesAndText},
         {"予約命令の長さ・ワード境界", testReservedAndAlignment},
+        {"QuickTime JPEG・分割・移動・拡大・切り抜き・代替表示", testQuickTime},
+        {"QuickTime JPEGの破損・未対応形式・上限・キャンセル", testQuickTimeFailures},
         {"未対応命令・破損・上限・キャンセル", testFailures},
         {"2000件の変異入力・境界検査", testMutations}
     };

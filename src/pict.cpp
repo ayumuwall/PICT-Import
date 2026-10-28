@@ -2,6 +2,7 @@
 
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
+#include <ImageIO/ImageIO.h>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -246,6 +247,8 @@ class Decoder {
     int fontID = 0, fontSize = 12;
     unsigned fontFace = 0;
     std::string fontName;
+    bool pendingQuickTimeFallback = false;
+    Rect quickTimeDestination;
 
     void checkCancelled() const {
         if (cancelled && cancelled()) throw Error("読み込みをキャンセルしました。");
@@ -392,7 +395,7 @@ class Decoder {
             throw Error("複雑なリージョンの輪郭描画は未対応です。");
         path(p.get(), verb);
     }
-    void readBitmap(bool direct, bool packed) {
+    void readBitmap(bool direct, bool packed, bool quickTimeFallback = false) {
         if (direct) r.skip(4); // 記録されたbaseAddrは使用しない。
         const auto rowField = r.u16();
         const bool pixmap = (rowField & 0x8000) != 0;
@@ -490,6 +493,10 @@ class Decoder {
             }
         }
         const auto dest = device(destination);
+        // QuickTimeが直後に付ける、同じ転送先の白黒PackBitsRectは代替表示用。
+        if (quickTimeFallback && !pixmap && mode == 0 &&
+            dest.top == quickTimeDestination.top && dest.left == quickTimeDestination.left &&
+            dest.bottom == quickTimeDestination.bottom && dest.right == quickTimeDestination.right) return;
         const auto area = intersect(intersect(intersect(dest, frame), clip.bounds), bitmapClip.bounds);
         if (area.width() > 0 && area.height() > 0) {
             charge(std::size_t(area.width()) * area.height());
@@ -505,6 +512,117 @@ class Decoder {
         }
     }
     bool pendingBitmapRegion = false;
+
+    void quickTime() {
+        const auto length = r.u32();
+        r.need(length);
+        Reader q(r.data, r.pos + length, r.pos);
+        r.skip(length);
+        if (q.u16() != 0) throw Error("未対応のQuickTime画像命令のバージョンです。");
+        std::array<std::int32_t, 9> matrix{};
+        for (auto& value : matrix) value = static_cast<std::int32_t>(q.u32());
+        // 16.16の拡大率・移動量と2.30の同次座標。回転・せん断・射影は拒否する。
+        if (matrix[0] <= 0 || matrix[4] <= 0 || matrix[1] || matrix[2] ||
+            matrix[3] || matrix[5] || matrix[8] != 0x40000000)
+            throw Error("QuickTime画像の回転・せん断・射影・反転は未対応です。");
+        const double scaleX = matrix[0] / 65536.0, scaleY = matrix[4] / 65536.0;
+        const double offsetX = matrix[6] / 65536.0 + origin.x;
+        const double offsetY = matrix[7] / 65536.0 + origin.y;
+        const auto matteSize = q.u32(); q.skip(8);
+        const auto mode = q.u16(); validateMode(mode);
+        const auto source = q.rect(); q.skip(4);
+        const auto maskSize = q.u32();
+        if (matteSize || maskSize) throw Error("QuickTime画像のマット・マスクは未対応です。");
+        const auto descriptionStart = q.pos;
+        const auto descriptionSize = q.u32();
+        if (descriptionSize < 86) throw Error("QuickTime画像のImageDescriptionが短すぎます。");
+        q.need(descriptionSize - 4);
+        if (q.u32() != 0x6a706567) throw Error("QuickTime埋め込み画像はJPEGのみ対応しています。");
+        q.skip(6);
+        if (q.u16()) throw Error("外部データを参照するQuickTime画像は未対応です。");
+        q.skip(16);
+        const int width = q.u16(), height = q.u16();
+        const auto count = pixelCount(width, height, limits);
+        q.skip(8);
+        std::size_t dataSize = q.u32();
+        if (q.u16() != 1) throw Error("複数フレームのQuickTime画像は未対応です。");
+        q.skip(32);
+        const auto depth = q.u16();
+        if ((depth != 24 && depth != 32 && depth != 40) || q.s16() != -1)
+            throw Error("未対応のQuickTime JPEGピクセル形式です。");
+        q.pos = descriptionStart + descriptionSize;
+        if (source.width() <= 0 || source.height() <= 0 || source.left < 0 || source.top < 0 ||
+            source.right > width || source.bottom > height)
+            throw Error("QuickTime画像のソース矩形が不正です。");
+        if (!dataSize) {
+            dataSize = q.size - q.pos;
+            // dataSizeが不明な場合も、命令末尾の偶数位置合わせだけを取り除く。
+            if (dataSize >= 3 && q.data[q.size - 1] == 0 &&
+                q.data[q.size - 3] == 0xff && q.data[q.size - 2] == 0xd9) --dataSize;
+        }
+        q.need(dataSize);
+        const auto* jpeg = q.data + q.pos;
+        q.skip(dataSize);
+        if (q.size - q.pos > 1 || (q.pos < q.size && q.u8() != 0) || dataSize < 4 ||
+            jpeg[0] != 0xff || jpeg[1] != 0xd8 || jpeg[dataSize - 2] != 0xff || jpeg[dataSize - 1] != 0xd9)
+            throw Error("QuickTime JPEGの長さ・終端が不正です。");
+        charge(count);
+        const CFObject<CFDataRef> data(CFDataCreateWithBytesNoCopy(nullptr, jpeg, dataSize, kCFAllocatorNull));
+        if (!data.get()) throw std::bad_alloc();
+        const CFObject<CGImageSourceRef> decoder(CGImageSourceCreateWithData(data.get(), nullptr));
+        if (!decoder.get() || !CGImageSourceGetType(decoder.get()) ||
+            !CFEqual(CGImageSourceGetType(decoder.get()), CFSTR("public.jpeg")) ||
+            CGImageSourceGetCount(decoder.get()) != 1)
+            throw Error("QuickTime JPEGを識別できません。");
+        // デコード前にJPEG自身の寸法を確認し、記述との不一致や過大な展開を拒否する。
+        const CFObject<CFDictionaryRef> properties(CGImageSourceCopyPropertiesAtIndex(decoder.get(), 0, nullptr));
+        int jpegWidth = 0, jpegHeight = 0;
+        const auto dimension = [&](CFStringRef key, int& value) {
+            if (!properties.get()) return false;
+            const auto number = CFDictionaryGetValue(properties.get(), key);
+            return number && CFGetTypeID(number) == CFNumberGetTypeID() &&
+                CFNumberGetValue(static_cast<CFNumberRef>(number), kCFNumberIntType, &value);
+        };
+        if (!dimension(kCGImagePropertyPixelWidth, jpegWidth) ||
+            !dimension(kCGImagePropertyPixelHeight, jpegHeight) || jpegWidth != width || jpegHeight != height)
+            throw Error("QuickTime画像とJPEGの寸法が一致しません。");
+        const void* keys[]{kCGImageSourceShouldCacheImmediately};
+        const void* values[]{kCFBooleanTrue};
+        const CFObject<CFDictionaryRef> options(CFDictionaryCreate(nullptr, keys, values, 1,
+            &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+        if (!options.get()) throw std::bad_alloc();
+        const CFObject<CGImageRef> decoded(CGImageSourceCreateImageAtIndex(decoder.get(), 0, options.get()));
+        if (!decoded.get() || CGImageSourceGetStatusAtIndex(decoder.get(), 0) != kCGImageStatusComplete ||
+            CGImageGetWidth(decoded.get()) != std::size_t(width) || CGImageGetHeight(decoded.get()) != std::size_t(height))
+            throw Error("QuickTime JPEGをデコードできません。");
+        std::vector<std::uint8_t> rgba(count * 4);
+        const CFObject<CGColorSpaceRef> space(CGColorSpaceCreateDeviceRGB());
+        if (!space.get()) throw std::bad_alloc();
+        Context context(CGBitmapContextCreate(rgba.data(), width, height, 8, std::size_t(width) * 4,
+            space.get(), kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big));
+        if (!context) throw Error("QuickTime JPEGの描画用メモリを確保できません。");
+        CGContextDrawImage(context.get(), CGRectMake(0, 0, width, height), decoded.get());
+        checkCancelled();
+        const double left = offsetX + source.left * scaleX, top = offsetY + source.top * scaleY;
+        const double right = offsetX + source.right * scaleX, bottom = offsetY + source.bottom * scaleY;
+        quickTimeDestination = {int(std::floor(top)), int(std::floor(left)),
+                                int(std::ceil(bottom)), int(std::ceil(right))};
+        pendingQuickTimeFallback = true;
+        const auto area = intersect(intersect(quickTimeDestination, frame), clip.bounds);
+        if (area.width() <= 0 || area.height() <= 0) return;
+        charge(std::size_t(area.width()) * area.height());
+        for (int y = area.top; y < area.bottom; ++y) {
+            checkCancelled();
+            const double sy = (y + 0.5 - offsetY) / scaleY;
+            if (sy < source.top || sy >= source.bottom) continue;
+            for (int x = area.left; x < area.right; ++x) {
+                const double sx = (x + 0.5 - offsetX) / scaleX;
+                if (sx < source.left || sx >= source.right) continue;
+                const auto i = (std::size_t(sy) * width + std::size_t(sx)) * 4;
+                pixel(x, y, {rgba[i], rgba[i + 1], rgba[i + 2]}, mode);
+            }
+        }
+    }
 
     void text(unsigned opcode) {
         if (opcode == 0x28) textPosition = r.point();
@@ -570,6 +688,7 @@ class Decoder {
         throw Error(message.str());
     }
     void opcode(unsigned op) {
+        const bool quickTimeFallback = std::exchange(pendingQuickTimeFallback, false);
         switch (op) {
             case 0x00: return;
             case 0x01: clip = readRegion(r); clip.translate(origin); return;
@@ -620,7 +739,7 @@ class Decoder {
                 fontName.assign(reinterpret_cast<const char*>(r.data + r.pos), n); r.pos = end; return; }
             case 0x90: case 0x91: case 0x98: case 0x99: case 0x9a: case 0x9b:
                 pendingBitmapRegion = (op & 1) != 0;
-                readBitmap(op >= 0x9a, op >= 0x98); return;
+                readBitmap(op >= 0x9a, op >= 0x98, quickTimeFallback && op == 0x98); return;
             case 0xa0: { const auto kind = r.u16();
                 if ((kind >= 190 && kind <= 199) || (kind >= 150 && kind <= 155))
                     throw Error("文字レイアウト／PostScript描画コメントを含むPICTは未対応です。");
@@ -629,8 +748,9 @@ class Decoder {
                 if ((kind >= 190 && kind <= 199) || (kind >= 150 && kind <= 155))
                     throw Error("文字レイアウト／PostScript描画コメントを含むPICTは未対応です。");
                 r.skip(n); return; }
-            case 0x8200: case 0x8201:
-                throw Error("QuickTime圧縮画像を含むPICTは未対応です。元のアプリで画像として展開してください。");
+            case 0x8200: quickTime(); return;
+            case 0x8201:
+                throw Error("非圧縮QuickTime画像を含むPICTは未対応です。");
         }
         if (op >= 0x30 && op <= 0x6c && (op & 7) <= 4) {
             const auto group = op >> 4, verb = op & 7;

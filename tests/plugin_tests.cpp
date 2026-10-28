@@ -1,7 +1,9 @@
 #include "PITypes.h"
 #include "PIFormat.h"
 
+#include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -146,6 +148,21 @@ int main() {
             std::cout << "成功: 形式不一致・エラー文字列・読み込み専用\n";
         }
         {
+            Host host(entry, "build/fixtures/quicktime-jpeg.pict");
+            host.useFileURL();
+            check(host.call(formatSelectorReadStart) == 0, "QuickTime JPEGの読み込みが失敗しました。");
+            check(host.record.imageSize32.h == 16 && host.record.imageSize32.v == 40 && host.record.data,
+                  "QuickTime JPEGの画像寸法・バッファが不正です。");
+            const auto* pixels = static_cast<const unsigned char*>(host.record.data);
+            const auto top = pixels + 4 * host.record.rowBytes + 4 * host.record.colBytes;
+            const auto bottom = pixels + 20 * host.record.rowBytes + 4 * host.record.colBytes;
+            check(top[0] > 230 && top[1] < 20 && top[2] < 20 && bottom[0] < 20 && bottom[2] > 230,
+                  "QuickTime JPEGの分割画像がホストへ正しく渡されません。");
+            check(host.call(formatSelectorReadContinue) == 0 && !host.record.data,
+                  "QuickTime JPEGの読み込みが終了しません。");
+            std::cout << "成功: QuickTime JPEGの分割画像をCFURLから読み込み、ホストへ転送\n";
+        }
+        {
             const std::string filename = "build/fixtures/日本語の画像.pct";
             std::filesystem::copy_file("build/fixtures/red-top-v2.pict", filename,
                                       std::filesystem::copy_options::overwrite_existing);
@@ -166,33 +183,41 @@ int main() {
             std::cout << "成功: 日本語のファイルURL・ホスト記述子なし・16ビット座標\n";
         }
         if (const char* directory = std::getenv("PICT_TEST_SAMPLE_DIR")) {
-            const auto filename = (std::filesystem::path(directory) / "IMAGE029.pct").string();
-            Host host(entry, filename);
-            host.useFileURL();
-            check(host.call(formatSelectorFilterFile) == 0, "実ファイルの形式識別が失敗しました。");
-            check(host.call(formatSelectorReadPrepare) == 0, "実ファイルのPrepareが失敗しました。");
-            check(host.call(formatSelectorReadStart) == 0, "実ファイルの読み込みが失敗しました。");
-            check(host.record.imageSize32.h == 640 && host.record.imageSize32.v == 480, "実ファイルの寸法が不正です。");
-            std::vector<unsigned char> rgba(640 * 480 * 4, 255);
-            int rows = 0;
-            while (host.record.data) {
-                const auto* bytes = static_cast<const unsigned char*>(host.record.data);
-                for (int y = host.record.theRect32.top; y < host.record.theRect32.bottom; ++y) {
-                    for (int x = 0; x < 640; ++x)
-                        for (int c = 0; c < 3; ++c)
-                            rgba[(y * 640 + x) * 4 + c] = bytes[(y - host.record.theRect32.top) * host.record.rowBytes + x * host.record.colBytes + c];
-                    ++rows;
+            for (const auto& sample : std::filesystem::directory_iterator(directory)) {
+                auto extension = sample.path().extension().string();
+                std::transform(extension.begin(), extension.end(), extension.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+                if (extension != ".pict" && extension != ".pct" && extension != ".pic") continue;
+                const auto filename = sample.path().string();
+                Host host(entry, filename);
+                host.useFileURL();
+                check(host.call(formatSelectorFilterFile) == 0, "実ファイルの形式識別が失敗しました。");
+                check(host.call(formatSelectorReadPrepare) == 0, "実ファイルのPrepareが失敗しました。");
+                check(host.call(formatSelectorReadStart) == 0, "実ファイルの読み込みが失敗しました。");
+                const int width = host.record.imageSize32.h, height = host.record.imageSize32.v;
+                check(width > 0 && height > 0, "実ファイルの寸法が不正です。");
+                std::vector<unsigned char> rgba(std::size_t(width) * height * 4, 255);
+                int rows = 0;
+                while (host.record.data) {
+                    const auto* bytes = static_cast<const unsigned char*>(host.record.data);
+                    for (int y = host.record.theRect32.top; y < host.record.theRect32.bottom; ++y) {
+                        for (int x = 0; x < width; ++x)
+                            for (int c = 0; c < 3; ++c)
+                                rgba[(std::size_t(y) * width + x) * 4 + c] = bytes[(y - host.record.theRect32.top) * host.record.rowBytes + x * host.record.colBytes + c];
+                        ++rows;
+                    }
+                    check(host.call(formatSelectorReadContinue) == 0, "実ファイルのチャンク転送が失敗しました。");
                 }
-                check(host.call(formatSelectorReadContinue) == 0, "実ファイルのチャンク転送が失敗しました。");
+                check(rows == height, "実ファイルの全行が転送されません。");
+                if (const char* referenceDirectory = std::getenv("PICT_TEST_REFERENCE_DIR")) {
+                    std::ifstream reference(std::filesystem::path(referenceDirectory) / (sample.path().stem().string() + ".rgba"), std::ios::binary);
+                    check(reference.good(), "参照画像がありません。");
+                    const std::vector<unsigned char> expected{std::istreambuf_iterator<char>(reference), std::istreambuf_iterator<char>()};
+                    check(rgba == expected, "ホストへ渡すRGBAが参照デコーダーと一致しません。");
+                }
+                std::cout << "成功: 実ファイル" << sample.path().filename().string()
+                          << "をCFURLで読み込み、" << rows << "行をホストへ転送\n";
             }
-            check(rows == 480, "実ファイルの全行が転送されません。");
-            if (const char* referenceDirectory = std::getenv("PICT_TEST_REFERENCE_DIR")) {
-                std::ifstream reference(std::filesystem::path(referenceDirectory) / "IMAGE029.rgba", std::ios::binary);
-                check(reference.good(), "参照画像がありません。");
-                const std::vector<unsigned char> expected{std::istreambuf_iterator<char>(reference), std::istreambuf_iterator<char>()};
-                check(rgba == expected, "ホストへ渡すRGBAが参照デコーダーと一致しません。");
-            }
-            std::cout << "成功: 実ファイルIMAGE029.pctをCFURLで読み込み、480行をホストへ転送\n";
         }
         dlclose(library);
         return 0;

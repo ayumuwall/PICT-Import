@@ -39,9 +39,9 @@ SDKには[Adobe SDKライセンス](https://github.com/AdobeDocs/photoshop-cpp-s
 
 `make test`では、次の内容を検証します。
 
-- デコーダー：PICT 1／2、主要ピクセル形式、圧縮、図形、文字、クリップ、破損・切断データ、2,000件の変異入力。AddressSanitizer／UndefinedBehaviorSanitizerを使用します。
+- デコーダー：PICT 1／2、主要ピクセル形式、圧縮、図形、文字、クリップ、QuickTime JPEGの分割・配置・代替表示、破損・切断データ、2,000件の変異入力。AddressSanitizer／UndefinedBehaviorSanitizerを使用します。
 - 登録情報：PiPLのホスト指定・バージョン・エントリーポイントの整合性。
-- ホスト接続：実際のMach-Oバンドルをロードし、PICT識別・画像受け渡し・進捗・キャンセル・エラー処理、日本語パスのファイルURLを検証します。
+- ホスト接続：実際のMach-Oバンドルをロードし、PICT識別・画像受け渡し・進捗・キャンセル・エラー処理、日本語パスのファイルURL、QuickTime JPEGの受け渡しを検証します。
 
 `make test-installer`では、配置先・所有者・権限・更新設定・同梱ファイルのSHA-256照合・バンドル署名・Intel／Apple Silicon両アーキテクチャを検証します。
 
@@ -51,11 +51,13 @@ SDKには[Adobe SDKライセンス](https://github.com/AdobeDocs/photoshop-cpp-s
 PICT_TEST_SAMPLE_DIR=/path/to/samples make test
 ```
 
-参照デコーダーの結果と比較する場合は、ファイル名の拡張子を`.rgba`に変えた8ビットRGBAデータを用意し、`PICT_TEST_REFERENCE_DIR`も指定します。検証に使った個人の画像は、公開リポジトリ・配布物に含めません。
+参照デコーダーの結果と比較する場合は、ファイル名の拡張子を`.rgba`に変えた8ビットRGBAデータを用意し、`PICT_TEST_REFERENCE_DIR`も指定します。デコーダーと、ホストへ転送した全行の両方を照合します。検証に使った個人の画像は、公開リポジトリ・配布物に含めません。
 
 ### 実機での確認
 
 0.1.2では、Photoshop本体でPICTを読み込めたことを利用者が確認しています。Intel／Apple Siliconの双方で実機検証を完了したという記録はありません。
+
+0.1.3では、QuickTime JPEGを3分割で格納した実ファイル`IMAGE005.pct`について、640×480画素のデコードと模擬ホストへの480行の転送を検証しました。各JPEGを独立に展開して連結した参照RGBAと全画素が一致しています。利用者によるPhotoshop本体での読み込みも確認済みです。
 
 0.1.1から0.1.2への修正内容やファイル構造の調査は、[PICTの仕様調査](PICT-SPEC.md)を参照してください。
 

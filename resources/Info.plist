@@ -7,8 +7,8 @@
     <key>CFBundleName</key><string>PICT Import</string>
     <key>CFBundlePackageType</key><string>8BIF</string>
     <key>CFBundleSignature</key><string>8BIM</string>
-    <key>CFBundleShortVersionString</key><string>0.1.2</string>
-    <key>CFBundleVersion</key><string>3</string>
+    <key>CFBundleShortVersionString</key><string>0.1.3</string>
+    <key>CFBundleVersion</key><string>4</string>
     <key>LSMinimumSystemVersion</key><string>12.0</string>
     <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Ayumu Magoshi</string>
 </dict></plist>

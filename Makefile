@@ -2,7 +2,7 @@ CXX = xcrun clang++
 SDK ?= .vendor/photoshop-sdk
 SDK_INCLUDE = -I"$(SDK)/pluginsdk/photoshopapi/photoshop" -I"$(SDK)/pluginsdk/photoshopapi/pica_sp"
 CXXFLAGS = -std=c++17 -Wall -Wextra -Werror -Wno-deprecated-declarations -Isrc
-FRAMEWORKS = -framework CoreGraphics -framework CoreText -framework CoreFoundation
+FRAMEWORKS = -framework CoreGraphics -framework CoreText -framework CoreFoundation -framework ImageIO
 ARCHS ?= -arch x86_64 -arch arm64
 BUNDLE = dist/PICT Import.plugin
 

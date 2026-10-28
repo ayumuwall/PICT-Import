@@ -75,7 +75,7 @@ struct CallTrace {
     int selector;
     const int16* result;
     ~CallTrace() {
-        os_log_with_type(readLog(), OS_LOG_TYPE_DEFAULT, "PICT Import 0.1.2 selector=%{public}d result=%{public}d", selector, *result);
+        os_log_with_type(readLog(), OS_LOG_TYPE_DEFAULT, "PICT Import 0.1.3 selector=%{public}d result=%{public}d", selector, *result);
     }
 };
 
@@ -134,7 +134,7 @@ extern "C" __attribute__((visibility("default"))) void PluginMain(
     *result = noErr;
     if (selector == formatSelectorAbout) {
         CFUserNotificationDisplayAlert(0, kCFUserNotificationNoteAlertLevel, nullptr, nullptr, nullptr,
-            CFSTR("PICT Import 0.1.2"),
+            CFSTR("PICT Import 0.1.3"),
             CFSTR("Macintosh PICT 1／2をRGB画像として読み込みます。\n対応範囲・制限事項は付属のREADMEをご覧ください。"),
             CFSTR("OK"), nullptr, nullptr, nullptr);
         return;

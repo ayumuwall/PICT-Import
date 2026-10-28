@@ -4,11 +4,13 @@
 
 [ホームページ](https://ayumuwall.github.io/PICT-Import/)
 
-**[PICT Import 0.1.2のインストーラーをダウンロード（macOS）](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.2/PICT-Import-0.1.2-Installer.pkg)**
+**[PICT Import 0.1.3のインストーラーをダウンロード（macOS）](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.3/PICT-Import-0.1.3-Installer.pkg)**
 
-[手動インストール用ZIP](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.2/PICT-Import-0.1.2-macOS.zip) · [リリース一覧](https://github.com/ayumuwall/PICT-Import/releases)
+[手動インストール用ZIP](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.3/PICT-Import-0.1.3-macOS.zip) · [リリース一覧](https://github.com/ayumuwall/PICT-Import/releases)
 
-**現在の公開版は0.1.2（開発版）です。Photoshop本体でのPICT読み込みを確認済みです。**
+**現在の公開版は0.1.3（開発版）です。Photoshop本体でのPICT読み込みを確認済みです。**
+
+0.1.3では、QuickTime埋め込みJPEG（分割画像・平行移動・拡大縮小）の読み込みに対応しました。
 
 ## 必要な環境
 
@@ -24,7 +26,7 @@ Photoshopは別途必要です。プラグインはインストーラーだけ�
 ## インストール
 
 1. Photoshopで作業中のファイルを保存し、Photoshopを終了します。
-2. 上のリンクからダウンロードした`PICT-Import-0.1.2-Installer.pkg`を開きます。
+2. 上のリンクからダウンロードした`PICT-Import-0.1.3-Installer.pkg`を開きます。
 3. インストーラーの案内に従います。管理者認証を求められたら、Macの管理者アカウントで許可してください。
 4. Photoshopを起動します。Mac全体の再起動は不要です。
 
@@ -33,7 +35,7 @@ Photoshopは別途必要です。プラグインはインストーラーだけ�
 <details>
 <summary>ZIPを使って手動でインストールする場合</summary>
 
-1. Photoshopを終了し、[手動インストール用ZIP](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.2/PICT-Import-0.1.2-macOS.zip)をダウンロード・展開します。
+1. Photoshopを終了し、[手動インストール用ZIP](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.3/PICT-Import-0.1.3-macOS.zip)をダウンロード・展開します。
 2. Finderの「移動 → フォルダへ移動」で、`/Library/Application Support/`を開きます。
 3. その中の`Adobe` → `Plug-Ins` → `CC`フォルダーを開きます。フォルダーがない場合は、この順に作成してください。
 4. 展開した`PICT-Import`フォルダー内の`PICT Import.plugin`を、`CC`フォルダーへコピーします。管理者認証を求められる場合があります。
@@ -78,7 +80,7 @@ PICT 1・PICT 2に対応し、白黒・パレットカラー・RGBの画像、�
 
 - **図形や文字も画像になります。** ベクターや文字としての再編集、元のレイヤー・透明度・ICCプロファイルの復元はできません。背景は白になります。
 - **文字の再現には制限があります。** MacRomanの欧文文字が対象です。日本語などは正しく再現できず、欧文も現在のフォントで描くため字形や字幅が変わる場合があります。
-- **QuickTime形式でJPEGなどを埋め込んだPICTや、一部の特殊な描画には未対応です。** 未対応機能を含むファイルは、読み込みエラーになります。
+- **QuickTime埋め込みJPEGは0.1.3から対応します。** 分割画像・平行移動・拡大縮小が対象です。他のQuickTime圧縮方式、回転・反転・せん断・射影、マット・マスク、一部の特殊な描画は未対応で、読み込みエラーになります。
 - **MacBinary・AppleDouble・StuffItや、リソースフォーク全体は直接読み込めません。** これらに格納された画像は、先にPICTデータを取り出す必要があります。
 
 圧縮方式・描画機能・画像サイズの上限など、詳しい対応範囲は[PICTの仕様と対応範囲](docs/PICT-SPEC.md)を参照してください。
