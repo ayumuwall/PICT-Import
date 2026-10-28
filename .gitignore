@@ -1,0 +1,6 @@
+.vendor/
+build/
+dist/
+.DS_Store
+*.dSYM/
+__pycache__/

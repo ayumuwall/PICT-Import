@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>PICT Import @VERSION@</title>
+    <welcome file="Welcome.html" mime-type="text/html"/>
+    <readme file="ReadMe.html" mime-type="text/html"/>
+    <conclusion file="Conclusion.html" mime-type="text/html"/>
+    <options customize="never" require-scripts="false" allow-external-scripts="false" hostArchitectures="x86_64,arm64"/>
+    <domains enable_localSystem="true" enable_currentUserHome="false" enable_anywhere="false"/>
+    <volume-check>
+        <allowed-os-versions><os-version min="12.0"/></allowed-os-versions>
+    </volume-check>
+    <product id="jp.pictimport.photoshop.installer" version="@VERSION@"/>
+    <choices-outline><line choice="pict-import"/></choices-outline>
+    <choice id="pict-import" title="PICT Import" visible="false">
+        <pkg-ref id="jp.pictimport.photoshop.pkg"/>
+    </choice>
+    <pkg-ref id="jp.pictimport.photoshop.pkg" version="@VERSION@" onConclusion="None">PICTImport-component.pkg</pkg-ref>
+    <pkg-ref id="jp.pictimport.photoshop.pkg">
+        <must-close><app id="com.adobe.Photoshop"/></must-close>
+    </pkg-ref>
+</installer-gui-script>

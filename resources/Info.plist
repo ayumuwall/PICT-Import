@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleDevelopmentRegion</key><string>ja</string>
+    <key>CFBundleExecutable</key><string>PICTImport</string>
+    <key>CFBundleIdentifier</key><string>jp.pictimport.photoshop</string>
+    <key>CFBundleName</key><string>PICT Import</string>
+    <key>CFBundlePackageType</key><string>8BIF</string>
+    <key>CFBundleSignature</key><string>8BIM</string>
+    <key>CFBundleShortVersionString</key><string>0.1.2</string>
+    <key>CFBundleVersion</key><string>3</string>
+    <key>LSMinimumSystemVersion</key><string>12.0</string>
+    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Ayumu Magoshi</string>
+</dict></plist>

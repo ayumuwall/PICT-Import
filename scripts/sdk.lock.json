@@ -1,0 +1,94 @@
+{
+  "repository": "AdobeDocs/photoshop-cpp-sdk",
+  "commit": "7e9aca4353a3d4615e9522f47521bf840fb4388c",
+  "files": [
+    {
+      "path": "pluginsdk/photoshopapi/photoshop/PIAbout.h",
+      "sha": "dd14351d6e3f44a96a0bbe08242c4e7a2f469e8a"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/photoshop/PIActions.h",
+      "sha": "462a2bca7f1ea1adf504bd416ef52ed95e32c061"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/photoshop/PIFormat.h",
+      "sha": "e5b9f8ad0e74b8a543a5dc40e74b488a0847a2ad"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/photoshop/PIGeneral.h",
+      "sha": "d14e7d2a22845beccc5230264df1dafb2ff3ed53"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/photoshop/PIResDefines.h",
+      "sha": "68e91899f0e8fe6238466ce736c3c050636088a7"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/photoshop/PITypes.h",
+      "sha": "59355198921d238a3b1a35d55f0c5273a728a056"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/photoshop/PSIntTypes.h",
+      "sha": "7811e58dfdd1cb64d3d551ad09aa64d781cd2fb0"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/photoshop/PSPlatform.h",
+      "sha": "8a8aad31a30edb6a9ea17eaf1311c8a8ba2fa32f"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPAdapts.h",
+      "sha": "e2cf986aa57f30f65fd30faf7160627acbf50a0c"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPBasic.h",
+      "sha": "c0273a40901b85ac9ba968e48b9a4de2738e071b"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPCaches.h",
+      "sha": "c2150f6ed43c70bf710eb9f1c2da04e2cbcaa52d"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPConfig.h",
+      "sha": "6a063333440bded07b6ebfc5920644b11f064e61"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPErrorCodes.h",
+      "sha": "137faaed0466c5b5b14e95eebe8b1951cbc78036"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPFiles.h",
+      "sha": "4f3c028c4d377b8c60727e29d78e87f86b02a998"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPMData.h",
+      "sha": "507e5fff84511bf10b9c31a0ab81ca2325a87f21"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPPiPL.h",
+      "sha": "a1b254da1aa14135665e1110459921893ae8764c"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPPlugs.h",
+      "sha": "7cbd83befc1ab04c13f1e27442ae8d0816d6a2e3"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPProps.h",
+      "sha": "748c7ba73ca1ec224e5ca3b0cbe55f0e59aa719e"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPStrngs.h",
+      "sha": "ebe9bed49e06bec3b67e5d296837b7317dd243da"
+    },
+    {
+      "path": "pluginsdk/photoshopapi/pica_sp/SPTypes.h",
+      "sha": "813acbdd654d79efcf6a14ae28636a5580593b64"
+    },
+    {
+      "path": "LICENSE.md",
+      "sha": "387ec72d9d680f4fcb67511af8472ad451fcb61c"
+    },
+    {
+      "path": "pluginsdk/pipl-schema.json",
+      "sha": "e05d7f064205e98b5e817c9accc1b03e68652d02"
+    }
+  ]
+}
