@@ -2,6 +2,8 @@
 
 古いMacで作成したPICT画像を、Photoshopで開くためのmacOS用プラグインです。`.pict`・`.pct`・`.pic`ファイルを読み込み、Photoshopで編集したり、PNG・JPEG・PSDなどで保存したりできます。
 
+[ホームページ](https://ayumuwall.github.io/PICT-Import/)
+
 **[PICT Import 0.1.2のインストーラーをダウンロード（macOS）](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.2/PICT-Import-0.1.2-Installer.pkg)**
 
 [手動インストール用ZIP](https://github.com/ayumuwall/PICT-Import/releases/download/v0.1.2/PICT-Import-0.1.2-macOS.zip) · [リリース一覧](https://github.com/ayumuwall/PICT-Import/releases)

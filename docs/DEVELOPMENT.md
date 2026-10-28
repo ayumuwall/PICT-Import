@@ -67,6 +67,10 @@ PICT_TEST_SAMPLE_DIR=/path/to/samples make test
 /usr/bin/log show --last 10m --style compact --predicate 'subsystem == "jp.pictimport.photoshop"'
 ```
 
+## ホームページ
+
+ホームページのソースは`docs/index.html`と`docs/assets/`です。GitHub Pagesは`gh-pages`ブランチのルートから公開しています。更新時は、サイトのHTML・資産・`.nojekyll`・`LICENSE`を同ブランチへ同期してプッシュします。
+
 ## 構成
 
 | パス | 内容 |
